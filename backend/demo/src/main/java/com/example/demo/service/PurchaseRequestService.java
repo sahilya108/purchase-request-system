@@ -60,6 +60,10 @@ public class PurchaseRequestService {
         return requestRepository.findByEmployeeId(employeeId);
     }
 
+    public List<PurchaseRequest> getPendingRequestsByTeam(Long teamId) {
+        return requestRepository.findByTeamIdAndStatus(teamId, "PENDING");
+    }
+
 
     public PurchaseRequest approveRequest(Long requestId, Long managerId) {
         PurchaseRequest request = requestRepository.findById(requestId)

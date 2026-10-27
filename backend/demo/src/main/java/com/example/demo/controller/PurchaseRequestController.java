@@ -60,6 +60,13 @@ public class PurchaseRequestController {
 
     public record RejectRequest(String rejectionReason) {}
 
+    @GetMapping("/team/{teamId}/pending")
+    public List<PurchaseRequest> getPendingRequestsByTeam(
+            @PathVariable Long teamId) {
+
+        return requestService.getPendingRequestsByTeam(teamId);
+    }
+
 
     public record CreateRequest(
             String itemName,
