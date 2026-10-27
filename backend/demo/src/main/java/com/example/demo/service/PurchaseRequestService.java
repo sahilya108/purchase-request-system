@@ -3,6 +3,7 @@ package com.example.demo.service;
 
 import com.example.demo.entity.PurchaseRequest;
 import com.example.demo.repository.PurchaseRequestRepository;
+import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -12,9 +13,13 @@ import java.util.List;
 public class PurchaseRequestService {
 
     private final PurchaseRequestRepository requestRepository;
+    private final UserRepository userRepository;
 
-    public PurchaseRequestService(PurchaseRequestRepository requestRepository) {
+    public PurchaseRequestService(
+            PurchaseRequestRepository requestRepository,
+            UserRepository userRepository) {
         this.requestRepository = requestRepository;
+        this.userRepository = userRepository;
     }
 
     public PurchaseRequest createRequest(
@@ -54,4 +59,60 @@ public class PurchaseRequestService {
     public List<PurchaseRequest> getEmployeeRequests(Long employeeId) {
         return requestRepository.findByEmployeeId(employeeId);
     }
+
+
+    public PurchaseRequest approveRequest(Long requestId, Long managerId) {
+        PurchaseRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        validateManagerTeam(request, managerId);
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RuntimeException("Only pending requests can be reviewed");
+        }
+
+        request.setStatus("APPROVED");
+        request.setManagerId(managerId);
+        request.setReviewedAt(java.time.LocalDateTime.now());
+
+        return requestRepository.save(request);
+    }
+
+    public PurchaseRequest rejectRequest(
+            Long requestId, Long managerId, String rejectionReason) {
+
+        PurchaseRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        validateManagerTeam(request, managerId);
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RuntimeException("Only pending requests can be reviewed");
+        }
+
+        if (rejectionReason == null || rejectionReason.isBlank()) {
+            throw new IllegalArgumentException("Rejection reason is required");
+        }
+
+        request.setStatus("REJECTED");
+        request.setManagerId(managerId);
+        request.setRejectionReason(rejectionReason);
+        request.setReviewedAt(java.time.LocalDateTime.now());
+
+        return requestRepository.save(request);
+    }
+
+    private void validateManagerTeam(
+            PurchaseRequest request, Long managerId) {
+
+        boolean validManager = userRepository
+                .existsByIdAndRoleAndTeamId(
+                        managerId, "MANAGER", request.getTeamId());
+
+        if (!validManager) {
+            throw new IllegalArgumentException(
+                    "Manager does not belong to this request's team");
+        }
+    }
+
 }

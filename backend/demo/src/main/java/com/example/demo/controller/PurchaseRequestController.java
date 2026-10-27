@@ -39,6 +39,28 @@ public class PurchaseRequestController {
         return requestService.getEmployeeRequests(employeeId);
     }
 
+
+    @PutMapping("/{requestId}/approve")
+    public PurchaseRequest approveRequest(
+            @PathVariable Long requestId,
+            @RequestParam Long managerId) {
+
+        return requestService.approveRequest(requestId, managerId);
+    }
+
+    @PutMapping("/{requestId}/reject")
+    public PurchaseRequest rejectRequest(
+            @PathVariable Long requestId,
+            @RequestParam Long managerId,
+            @RequestBody RejectRequest request) {
+
+        return requestService.rejectRequest(
+                requestId, managerId, request.rejectionReason());
+    }
+
+    public record RejectRequest(String rejectionReason) {}
+
+
     public record CreateRequest(
             String itemName,
             String description,
