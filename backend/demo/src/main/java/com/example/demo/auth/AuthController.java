@@ -41,6 +41,30 @@ public class AuthController {
         return "Registration successful";
     }
 
+
+
+    @PostMapping("/login")
+    public String login(@RequestBody LoginRequest request) {
+
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid email or password"));
+
+        if (!passwordEncoder.matches(
+                request.password(), user.getPassword())) {
+            throw new IllegalArgumentException(
+                    "Invalid email or password");
+        }
+
+        return "Login successful for " + user.getName();
+    }
+
+    public record LoginRequest(
+            String email,
+            String password
+    ) {}
+
+
     public record RegisterRequest(
             String name,
             String email,
