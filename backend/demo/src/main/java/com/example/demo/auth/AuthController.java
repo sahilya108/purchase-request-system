@@ -50,6 +50,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public String login(@RequestBody LoginRequest request) {
+        System.out.println(passwordEncoder.encode("dummy123"));
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException(

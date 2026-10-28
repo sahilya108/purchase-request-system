@@ -74,7 +74,9 @@ public class PurchaseRequestService {
         validateManagerTeam(request, managerId);
 
         if (!"PENDING".equals(request.getStatus())) {
-            throw new RuntimeException("Only pending requests can be reviewed");
+            throw new IllegalArgumentException(
+                    "Only pending requests can be reviewed"
+            );
         }
 
         request.setStatus("APPROVED");
@@ -93,7 +95,9 @@ public class PurchaseRequestService {
         validateManagerTeam(request, managerId);
 
         if (!"PENDING".equals(request.getStatus())) {
-            throw new RuntimeException("Only pending requests can be reviewed");
+            throw new IllegalArgumentException(
+                    "Only pending requests can be reviewed"
+            );
         }
 
         if (rejectionReason == null || rejectionReason.isBlank()) {

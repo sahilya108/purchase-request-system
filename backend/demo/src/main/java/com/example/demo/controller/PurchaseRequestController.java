@@ -2,9 +2,14 @@
 package com.example.demo.controller;
 
 import com.example.demo.entity.PurchaseRequest;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.UserRepository;
 import com.example.demo.service.PurchaseRequestService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import com.example.demo.entity.User;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,48 +19,128 @@ import java.util.List;
 public class PurchaseRequestController {
 
     private final PurchaseRequestService requestService;
+    private final UserRepository userRepository;
 
-    public PurchaseRequestController(PurchaseRequestService requestService) {
+    public PurchaseRequestController(
+            PurchaseRequestService requestService,
+            UserRepository userRepository) {
         this.requestService = requestService;
+        this.userRepository = userRepository;
     }
+
+
+    @GetMapping("/me")
+    public String getCurrentUser(Authentication authentication) {
+        return authentication.getName();
+    }
+
+
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PurchaseRequest createRequest(@RequestBody CreateRequest request) {
+    public PurchaseRequest createRequest(
+            @RequestBody CreateRequest request,
+            Authentication authentication) {
+
+        User employee = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Logged-in user not found"));
+
+        if (!"EMPLOYEE".equals(employee.getRole())) {
+            throw new IllegalArgumentException(
+                    "Only employees can create purchase requests");
+        }
+
         return requestService.createRequest(
                 request.itemName(),
                 request.description(),
                 request.quantity(),
                 request.amount(),
                 request.reason(),
-                request.employeeId(),
-                request.teamId()
+                employee.getId(),
+                employee.getTeamId()
         );
     }
 
+
+
     @GetMapping("/employee/{employeeId}")
     public List<PurchaseRequest> getEmployeeRequests(
-            @PathVariable Long employeeId) {
+            @PathVariable Long employeeId,
+            Authentication authentication) {
+
+        User loggedInUser = userRepository.findByEmail(
+                authentication.getName()
+        ).orElseThrow(() -> new ResourceNotFoundException(
+                "Logged-in user not found"
+        ));
+
+        if ("EMPLOYEE".equals(loggedInUser.getRole())
+                && !loggedInUser.getId().equals(employeeId)) {
+            throw new IllegalArgumentException(
+                    "Employees can view only their own requests"
+            );
+        }
+
+        if ("MANAGER".equals(loggedInUser.getRole())) {
+            throw new IllegalArgumentException(
+                    "Managers should use the team requests endpoint"
+            );
+        }
+
         return requestService.getEmployeeRequests(employeeId);
     }
 
 
-    @PutMapping("/{requestId}/approve")
-    public PurchaseRequest approveRequest(
-            @PathVariable Long requestId,
-            @RequestParam Long managerId) {
 
-        return requestService.approveRequest(requestId, managerId);
+    @PutMapping("/{requestId}/approve")
+    public ResponseEntity<PurchaseRequest> approveRequest(
+            @PathVariable Long requestId,
+            Authentication authentication) {
+
+        User manager = userRepository
+                .findByEmail(authentication.getName())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("User not found"));
+
+        if (!"MANAGER".equals(manager.getRole())) {
+            throw new SecurityException(
+                    "Only managers can approve requests");
+        }
+
+        PurchaseRequest approvedRequest =
+                requestService.approveRequest(
+                        requestId,
+                        manager.getId()
+                );
+
+        return ResponseEntity.ok(approvedRequest);
     }
 
     @PutMapping("/{requestId}/reject")
-    public PurchaseRequest rejectRequest(
+    public ResponseEntity<PurchaseRequest> rejectRequest(
             @PathVariable Long requestId,
-            @RequestParam Long managerId,
-            @RequestBody RejectRequest request) {
+            @RequestBody RejectRequest request,
+            Authentication authentication) {
 
-        return requestService.rejectRequest(
-                requestId, managerId, request.rejectionReason());
+        User manager = userRepository
+                .findByEmail(authentication.getName())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("User not found"));
+
+        if (!"MANAGER".equals(manager.getRole())) {
+            throw new SecurityException(
+                    "Only managers can reject requests");
+        }
+
+        PurchaseRequest rejectedRequest =
+                requestService.rejectRequest(
+                        requestId,
+                        manager.getId(),
+                        request.rejectionReason()
+                );
+
+        return ResponseEntity.ok(rejectedRequest);
     }
 
     public record RejectRequest(String rejectionReason) {}
