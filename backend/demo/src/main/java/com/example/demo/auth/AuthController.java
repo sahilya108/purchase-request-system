@@ -6,6 +6,7 @@ import com.example.demo.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import com.example.demo.security.JwtService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -13,12 +14,16 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthController(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService) {
+
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/register")
@@ -56,7 +61,10 @@ public class AuthController {
                     "Invalid email or password");
         }
 
-        return "Login successful for " + user.getName();
+        String token = jwtService.generateToken(
+                user.getEmail(), user.getRole());
+
+        return token;
     }
 
     public record LoginRequest(
