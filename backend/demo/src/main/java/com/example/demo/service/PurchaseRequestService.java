@@ -5,6 +5,7 @@ import com.example.demo.entity.PurchaseRequest;
 import com.example.demo.repository.PurchaseRequestRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import com.example.demo.exception.ResourceNotFoundException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -67,7 +68,8 @@ public class PurchaseRequestService {
 
     public PurchaseRequest approveRequest(Long requestId, Long managerId) {
         PurchaseRequest request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Purchase request not found with ID: " + requestId));
 
         validateManagerTeam(request, managerId);
 
