@@ -3,13 +3,10 @@ package com.example.demo.auth;
 
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.security.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import com.example.demo.security.JwtService;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,7 +31,8 @@ public class AuthController {
     public String register(@RequestBody RegisterRequest request) {
 
         if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new IllegalArgumentException("Email is already registered");
+            throw new IllegalArgumentException(
+                    "Email is already registered");
         }
 
         User user = new User();
@@ -49,11 +47,8 @@ public class AuthController {
         return "Registration successful";
     }
 
-
-
     @PostMapping("/login")
     public String login(@RequestBody LoginRequest request) {
-        System.out.println(passwordEncoder.encode("dummy123"));
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -61,21 +56,27 @@ public class AuthController {
 
         if (!passwordEncoder.matches(
                 request.password(), user.getPassword())) {
+
             throw new IllegalArgumentException(
                     "Invalid email or password");
         }
 
+
         String token = jwtService.generateToken(
-                user.getEmail(), user.getRole());
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getTeamId()
+        );
 
         return token;
+
     }
 
     public record LoginRequest(
             String email,
             String password
     ) {}
-
 
     public record RegisterRequest(
             String name,

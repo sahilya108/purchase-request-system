@@ -26,18 +26,27 @@ public class JwtService {
         this.expirationMs = expirationMs;
     }
 
-    public String generateToken(String email, String role) {
+
+    public String generateToken(
+            Long userId,
+            String email,
+            String role,
+            Long teamId) {
+
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .subject(email)
+                .claim("userId", userId)
                 .claim("role", role)
+                .claim("teamId", teamId)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
                 .compact();
     }
+
 
     public Claims extractClaims(String token) {
         return Jwts.parser()

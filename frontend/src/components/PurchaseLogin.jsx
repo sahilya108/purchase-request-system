@@ -2,27 +2,44 @@
 import { useState } from "react";
 import { login } from "../services/authService";
 import "./Login.css";
+import { useNavigate } from "react-router-dom";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+
     try {
       const token = await login(email, password);
       localStorage.setItem("token", token);
-      window.location.reload();
+
+      const payload = JSON.parse(
+        atob(
+          token.split(".")[1]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/")
+        )
+      );
+
+      if (payload.role !== "EMPLOYEE" && payload.role !== "MANAGER") {
+        throw new Error("Unknown user role.");
+      }
+
+      navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
+
   };
 
   return (
