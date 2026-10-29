@@ -50,6 +50,7 @@ public class AuthController {
     @PostMapping("/login")
     public String login(@RequestBody LoginRequest request) {
 
+
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Invalid email or password"));
@@ -61,7 +62,6 @@ public class AuthController {
                     "Invalid email or password");
         }
 
-
         String token = jwtService.generateToken(
                 user.getId(),
                 user.getEmail(),
@@ -70,7 +70,6 @@ public class AuthController {
         );
 
         return token;
-
     }
 
     public record LoginRequest(

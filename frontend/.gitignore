@@ -22,3 +22,30 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Java build files
+backend/target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store

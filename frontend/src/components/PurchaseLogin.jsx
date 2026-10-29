@@ -16,30 +16,34 @@ function Login() {
     setError("");
     setLoading(true);
 
-
     try {
       const token = await login(email, password);
-      localStorage.setItem("token", token);
 
       const payload = JSON.parse(
         atob(
-          token.split(".")[1]
+          token
+            .split(".")[1]
             .replace(/-/g, "+")
             .replace(/_/g, "/")
         )
       );
 
-      if (payload.role !== "EMPLOYEE" && payload.role !== "MANAGER") {
+      if (!["ADMIN", "EMPLOYEE", "MANAGER"].includes(payload.role)) {
         throw new Error("Unknown user role.");
       }
 
-      navigate("/dashboard");
+      localStorage.setItem("token", token);
+
+      if (payload.role === "ADMIN") {
+        navigate("/manager-register");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
-
   };
 
   return (
