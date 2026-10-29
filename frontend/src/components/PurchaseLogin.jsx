@@ -84,6 +84,19 @@ function Login() {
           </button>
         </form>
 
+        <p className="login-footer">
+          New employee?{" "}
+          <span
+            onClick={() => navigate("/register")}
+            style={{
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            Sign Up
+          </span>
+        </p>
+
         <p className="login-footer">Employee & Manager Portal</p>
       </section>
     </main>

@@ -2,10 +2,12 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.PurchaseRequest;
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.PurchaseRequestRepository;
 import com.example.demo.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import com.example.demo.exception.ResourceNotFoundException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,14 +15,20 @@ import java.util.List;
 @Service
 public class PurchaseRequestService {
 
+    private static final Logger logger =
+            LoggerFactory.getLogger(PurchaseRequestService.class);
+
     private final PurchaseRequestRepository requestRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     public PurchaseRequestService(
             PurchaseRequestRepository requestRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            EmailService emailService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     public PurchaseRequest createRequest(
@@ -37,11 +45,13 @@ public class PurchaseRequestService {
         }
 
         if (quantity == null || quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
+            throw new IllegalArgumentException(
+                    "Quantity must be greater than zero");
         }
 
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
+            throw new IllegalArgumentException(
+                    "Amount must be greater than zero");
         }
 
         PurchaseRequest request = new PurchaseRequest();
@@ -65,7 +75,6 @@ public class PurchaseRequestService {
         return requestRepository.findByTeamIdAndStatus(teamId, "PENDING");
     }
 
-
     public PurchaseRequest approveRequest(Long requestId, Long managerId) {
         PurchaseRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -75,19 +84,32 @@ public class PurchaseRequestService {
 
         if (!"PENDING".equals(request.getStatus())) {
             throw new IllegalArgumentException(
-                    "Only pending requests can be reviewed"
-            );
+                    "Only pending requests can be reviewed");
         }
 
         request.setStatus("APPROVED");
         request.setManagerId(managerId);
         request.setReviewedAt(java.time.LocalDateTime.now());
 
-        return requestRepository.save(request);
+        PurchaseRequest approvedRequest = requestRepository.save(request);
+
+        // Email failure must not undo a successful approval.
+        try {
+            emailService.sendApprovalEmail(approvedRequest);
+        } catch (Exception ex) {
+            logger.error(
+                    "Request {} was approved, but the notification email failed.",
+                    approvedRequest.getId(),
+                    ex);
+        }
+
+        return approvedRequest;
     }
 
     public PurchaseRequest rejectRequest(
-            Long requestId, Long managerId, String rejectionReason) {
+            Long requestId,
+            Long managerId,
+            String rejectionReason) {
 
         PurchaseRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
@@ -96,8 +118,7 @@ public class PurchaseRequestService {
 
         if (!"PENDING".equals(request.getStatus())) {
             throw new IllegalArgumentException(
-                    "Only pending requests can be reviewed"
-            );
+                    "Only pending requests can be reviewed");
         }
 
         if (rejectionReason == null || rejectionReason.isBlank()) {
@@ -124,5 +145,4 @@ public class PurchaseRequestService {
                     "Manager does not belong to this request's team");
         }
     }
-
 }
