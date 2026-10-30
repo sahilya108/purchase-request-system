@@ -1,4 +1,3 @@
-
 package com.example.demo.repository;
 
 import com.example.demo.entity.PurchaseRequest;
@@ -10,6 +9,8 @@ public interface PurchaseRequestRepository
         extends JpaRepository<PurchaseRequest, Long> {
 
     List<PurchaseRequest> findByEmployeeId(Long employeeId);
+
+    List<PurchaseRequest> findByTeamId(Long teamId);
 
     List<PurchaseRequest> findByTeamIdAndStatus(
             Long teamId, String status);

@@ -42,11 +42,14 @@ public class SecurityConfig {
                         .sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/requests/team/*/pending")
                         .hasRole("MANAGER")
                         .requestMatchers("/api/requests/**").authenticated()
+                        .requestMatchers("/api/chat/**")
+                        .hasAnyRole("EMPLOYEE", "MANAGER")
                         .anyRequest().permitAll())
                 .addFilterBefore(
                         jwtAuthenticationFilter,

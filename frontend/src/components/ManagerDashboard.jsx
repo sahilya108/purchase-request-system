@@ -1,4 +1,4 @@
-
+import Chatbot from "./Chatbot.jsx";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -294,6 +294,7 @@ function ManagerDashboard() {
                     </div>
                 )}
             </section>
+            <Chatbot />
         </main>
     );
 }
