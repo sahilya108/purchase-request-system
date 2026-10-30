@@ -4,73 +4,79 @@ import { useNavigate } from "react-router-dom";
 import CreateRequest from "./CreateRequest.jsx";
 import Chatbot from "./Chatbot.jsx";
 
-function getUserIdFromToken(token) {
-  try {
-    const base64 = token
-      .split(".")[1]
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const payload = JSON.parse(atob(base64));
-    return payload.userId ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function Dashboard() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showRequestForm, setShowRequestForm] = useState(false);
 
+  // Filter states
+  const [status, setStatus] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function loadRequests() {
-      const token = localStorage.getItem("token");
+  async function loadRequests(filters = {}) {
+    const token = localStorage.getItem("token");
 
-      if (!token) {
-        navigate("/");
-        return;
-      }
-
-      const employeeId = getUserIdFromToken(token);
-
-      if (employeeId == null) {
-        localStorage.removeItem("token");
-        navigate("/");
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `http://localhost:8080/api/requests/employee/${employeeId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.error || "Could not load purchase requests"
-          );
-        }
-
-        setRequests(data);
-      } catch (err) {
-        setError(err.message || "Failed to connect to the server");
-      } finally {
-        setLoading(false);
-      }
+    if (!token) {
+      navigate("/");
+      return;
     }
 
+    setLoading(true);
+    setError("");
+
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.status) {
+        params.append("status", filters.status);
+      }
+
+      if (filters.fromDate) {
+        params.append("fromDate", filters.fromDate);
+      }
+
+      if (filters.toDate) {
+        params.append("toDate", filters.toDate);
+      }
+
+      const queryString = params.toString();
+
+      const response = await fetch(
+        `http://localhost:8080/api/requests/filter${
+          queryString ? `?${queryString}` : ""
+        }`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+          data.error ||
+          "Could not load purchase requests"
+        );
+      }
+
+      setRequests(data);
+    } catch (err) {
+      setError(err.message || "Failed to connect to the server");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
     loadRequests();
-  }, [navigate]);
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -84,6 +90,29 @@ function Dashboard() {
     ]);
 
     setShowRequestForm(false);
+  }
+
+  function handleApplyFilters(event) {
+    event.preventDefault();
+
+    if (fromDate && toDate && fromDate > toDate) {
+      setError("From date cannot be after To date.");
+      return;
+    }
+
+    loadRequests({
+      status,
+      fromDate,
+      toDate,
+    });
+  }
+
+  function handleResetFilters() {
+    setStatus("");
+    setFromDate("");
+    setToDate("");
+
+    loadRequests();
   }
 
   return (
@@ -120,6 +149,70 @@ function Dashboard() {
           <CreateRequest onCreated={handleRequestCreated} />
         )}
 
+        {/* Request Filters */}
+        <form
+          className="request-filters"
+          onSubmit={handleApplyFilters}
+        >
+          <div className="filter-group">
+            <label htmlFor="request-status">Status</label>
+
+            <select
+              id="request-status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option value="">All Status</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="from-date">From Date</label>
+
+            <input
+              id="from-date"
+              type="date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(event) => setFromDate(event.target.value)}
+            />
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="to-date">To Date</label>
+
+            <input
+              id="to-date"
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(event) => setToDate(event.target.value)}
+            />
+          </div>
+
+          <div className="filter-buttons">
+            <button
+              type="submit"
+              className="apply-filter-button"
+              disabled={loading}
+            >
+              Apply Filters
+            </button>
+
+            <button
+              type="button"
+              className="reset-filter-button"
+              onClick={handleResetFilters}
+              disabled={loading}
+            >
+              Reset
+            </button>
+          </div>
+        </form>
+
         {loading && (
           <p className="dashboard-message">
             Loading requests...
@@ -132,8 +225,10 @@ function Dashboard() {
 
         {!loading && !error && requests.length === 0 && (
           <div className="empty-state">
-            <h3>No purchase requests yet</h3>
-            <p>Create your first request to get started.</p>
+            <h3>No purchase requests found</h3>
+            <p>
+              Try changing your filters or create a new request.
+            </p>
           </div>
         )}
 

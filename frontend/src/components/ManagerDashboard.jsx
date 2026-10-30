@@ -1,7 +1,7 @@
-import Chatbot from "./Chatbot.jsx";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Chatbot from "./Chatbot.jsx";
 
 function ManagerDashboard() {
     const [refreshing, setRefreshing] = useState(false);
@@ -13,45 +13,50 @@ function ManagerDashboard() {
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectionReason, setRejectionReason] = useState("");
 
-    const navigate = useNavigate();
+    // Filter states
+    const [status, setStatus] = useState("");
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
+    const [employeeId, setEmployeeId] = useState("");
 
+    const navigate = useNavigate();
     const token = localStorage.getItem("token");
 
-    // Read the manager's ID and team ID from the JWT.
-    function getTokenPayload(jwt) {
-        try {
-            const base64 = jwt.split(".")[1]
-                .replace(/-/g, "+")
-                .replace(/_/g, "/");
-            return JSON.parse(atob(base64));
-        } catch {
-            return null;
-        }
-    }
-
-    const payload = token ? getTokenPayload(token) : null;
-    const teamId = payload?.teamId;
-
-    const loadRequests = useCallback(async () => {
+    // Load requests using the backend filtering API
+    async function loadRequests(filters = {}) {
         if (!token) {
             navigate("/");
             return;
         }
 
-        if (!teamId) {
-            setError("Your login token does not contain a team ID.");
-            setLoading(false);
-            setRefreshing(false);
-            return;
-        }
-
         setRefreshing(true);
+        setError("");
 
         try {
-            setError("");
+            const params = new URLSearchParams();
+
+            if (filters.status) {
+                params.append("status", filters.status);
+            }
+
+            if (filters.fromDate) {
+                params.append("fromDate", filters.fromDate);
+            }
+
+            if (filters.toDate) {
+                params.append("toDate", filters.toDate);
+            }
+
+            if (filters.employeeId) {
+                params.append("employeeId", filters.employeeId);
+            }
+
+            const queryString = params.toString();
 
             const response = await fetch(
-                `http://localhost:8080/api/requests/team/${teamId}/pending`,
+                `http://localhost:8080/api/requests/filter${
+                    queryString ? `?${queryString}` : ""
+                }`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -64,23 +69,63 @@ function ManagerDashboard() {
 
             if (!response.ok) {
                 throw new Error(
-                    data.error || "Could not load pending requests"
+                    data.message ||
+                    data.error ||
+                    "Could not load purchase requests"
                 );
             }
 
             setRequests(Array.isArray(data) ? data : []);
+
         } catch (err) {
             setError(err.message || "Failed to connect to the server");
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [navigate, teamId, token]);
+    }
 
     useEffect(() => {
         loadRequests();
-    }, [loadRequests]);
+    }, []);
 
+    // Apply filters
+    function handleApplyFilters(event) {
+        event.preventDefault();
+
+        if (fromDate && toDate && fromDate > toDate) {
+            setError("From date cannot be after To date.");
+            return;
+        }
+
+        if (
+            employeeId.trim() &&
+            (!/^\d+$/.test(employeeId.trim()) ||
+                Number(employeeId) <= 0)
+        ) {
+            setError("Please enter a valid Employee ID.");
+            return;
+        }
+
+        loadRequests({
+            status,
+            fromDate,
+            toDate,
+            employeeId: employeeId.trim(),
+        });
+    }
+
+    // Reset filters
+    function handleResetFilters() {
+        setStatus("");
+        setFromDate("");
+        setToDate("");
+        setEmployeeId("");
+
+        loadRequests();
+    }
+
+    // Approve or reject request
     async function handleReview(requestId, action) {
         setActionError("");
 
@@ -129,13 +174,23 @@ function ManagerDashboard() {
 
             if (!response.ok) {
                 throw new Error(
-                    data.error || data.message || `Could not ${action} request`
+                    data.error ||
+                    data.message ||
+                    `Could not ${action} request`
                 );
             }
 
             setRejectingId(null);
             setRejectionReason("");
-            await loadRequests();
+
+            // Reload requests with currently applied filters
+            await loadRequests({
+                status,
+                fromDate,
+                toDate,
+                employeeId: employeeId.trim(),
+            });
+
         } catch (err) {
             setActionError(err.message || "Request review failed");
         } finally {
@@ -150,37 +205,153 @@ function ManagerDashboard() {
 
     return (
         <main className="dashboard-page">
+
+            {/* Header */}
             <header className="dashboard-header">
                 <div className="dashboard-brand">
                     <h1>Purchase Request System</h1>
                     <p>Manager Dashboard</p>
                 </div>
 
-                <button className="logout-button" onClick={handleLogout}>
+                <button
+                    className="logout-button"
+                    onClick={handleLogout}
+                >
                     Logout
                 </button>
             </header>
 
             <section className="dashboard-content">
+
+                {/* Dashboard Heading */}
                 <div className="dashboard-actions">
-                    <h2>Pending Team Requests</h2>
+                    <h2>Team Purchase Requests</h2>
 
                     <button
                         className="create-request-button refresh-button"
-                        onClick={loadRequests}
+                        onClick={() =>
+                            loadRequests({
+                                status,
+                                fromDate,
+                                toDate,
+                                employeeId: employeeId.trim(),
+                            })
+                        }
                         disabled={refreshing}
                     >
-                        <span className={refreshing ? "refresh-icon spinning" : "refresh-icon"}>
+                        <span className={
+                            refreshing
+                                ? "refresh-icon spinning"
+                                : "refresh-icon"
+                        }>
                             ↻
                         </span>
+
                         {refreshing ? "Refreshing..." : "Refresh"}
                     </button>
                 </div>
 
+                {/* Filters */}
+                <form
+                    className="request-filters"
+                    onSubmit={handleApplyFilters}
+                >
+                    <div className="filter-group">
+                        <label htmlFor="manager-status">
+                            Status
+                        </label>
+
+                        <select
+                            id="manager-status"
+                            value={status}
+                            onChange={(event) =>
+                                setStatus(event.target.value)
+                            }
+                        >
+                            <option value="">All Status</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="REJECTED">Rejected</option>
+                        </select>
+                    </div>
+
+                    <div className="filter-group">
+                        <label htmlFor="manager-from-date">
+                            From Date
+                        </label>
+
+                        <input
+                            id="manager-from-date"
+                            type="date"
+                            value={fromDate}
+                            max={toDate || undefined}
+                            onChange={(event) =>
+                                setFromDate(event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div className="filter-group">
+                        <label htmlFor="manager-to-date">
+                            To Date
+                        </label>
+
+                        <input
+                            id="manager-to-date"
+                            type="date"
+                            value={toDate}
+                            min={fromDate || undefined}
+                            onChange={(event) =>
+                                setToDate(event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div className="filter-group">
+                        <label htmlFor="employee-id">
+                            Employee ID
+                        </label>
+
+                        <input
+                            id="employee-id"
+                            type="number"
+                            min="1"
+                            placeholder="Enter Employee ID"
+                            value={employeeId}
+                            onChange={(event) =>
+                                setEmployeeId(event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div className="filter-buttons">
+                        <button
+                            type="submit"
+                            className="apply-filter-button"
+                            disabled={refreshing}
+                        >
+                            Apply Filters
+                        </button>
+
+                        <button
+                            type="button"
+                            className="reset-filter-button"
+                            onClick={handleResetFilters}
+                            disabled={refreshing}
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </form>
+
+                {/* Loading */}
                 {loading && (
-                    <p className="dashboard-message">Loading requests...</p>
+                    <p className="dashboard-message">
+                        Loading requests...
+                    </p>
                 )}
 
+                {/* Errors */}
                 {error && (
                     <p className="dashboard-error">{error}</p>
                 )}
@@ -189,20 +360,33 @@ function ManagerDashboard() {
                     <p className="dashboard-error">{actionError}</p>
                 )}
 
+                {/* Empty State */}
                 {!loading && !error && requests.length === 0 && (
                     <div className="empty-state">
-                        <h3>No pending requests</h3>
-                        <p>Your team has no requests waiting for review.</p>
+                        <h3>No purchase requests found</h3>
+                        <p>
+                            Try changing your filters or Employee ID.
+                        </p>
                     </div>
                 )}
 
+                {/* Request Cards */}
                 {!loading && !error && requests.length > 0 && (
                     <div className="request-grid">
+
                         {requests.map((request) => (
-                            <article className="request-card" key={request.id}>
+                            <article
+                                className="request-card"
+                                key={request.id}
+                            >
                                 <div className="request-card-heading">
                                     <h3>{request.itemName}</h3>
-                                    <span className="request-status pending">
+
+                                    <span
+                                        className={`request-status ${
+                                            request.status?.toLowerCase()
+                                        }`}
+                                    >
                                         {request.status}
                                     </span>
                                 </div>
@@ -212,7 +396,13 @@ function ManagerDashboard() {
                                 </p>
 
                                 <p>
-                                    <strong>Quantity:</strong> {request.quantity}
+                                    <strong>Employee ID:</strong>{" "}
+                                    {request.employeeId}
+                                </p>
+
+                                <p>
+                                    <strong>Quantity:</strong>{" "}
+                                    {request.quantity}
                                 </p>
 
                                 <p>
@@ -221,80 +411,134 @@ function ManagerDashboard() {
                                 </p>
 
                                 <p>
-                                    <strong>Reason:</strong> {request.reason}
+                                    <strong>Reason:</strong>{" "}
+                                    {request.reason}
                                 </p>
 
                                 <p className="request-id">
-                                    <strong>Request ID:</strong> #{request.id}
+                                    <strong>Request ID:</strong>{" "}
+                                    #{request.id}
                                 </p>
 
-                                {rejectingId === request.id && (
-                                    <div className="reject-form">
-                                        <label htmlFor={`reject-${request.id}`}>
-                                            Rejection reason
-                                        </label>
-
-                                        <textarea
-                                            id={`reject-${request.id}`}
-                                            value={rejectionReason}
-                                            onChange={(event) =>
-                                                setRejectionReason(event.target.value)
-                                            }
-                                            placeholder="Explain why this request is rejected"
-                                            rows={3}
-                                        />
-                                    </div>
+                                {request.createdAt && (
+                                    <p>
+                                        <strong>Created At:</strong>{" "}
+                                        {new Date(request.createdAt).toLocaleString("en-IN")}
+                                    </p>
                                 )}
 
-                                <div className="manager-actions">
-                                    <button
-                                        className="approve-button"
-                                        disabled={processingId === request.id}
-                                        onClick={() => handleReview(request.id, "approve")}
-                                    >
-                                        {processingId === request.id
-                                            ? "Processing..."
-                                            : "Approve"}
-                                    </button>
-
-                                    {rejectingId === request.id ? (
-                                        <>
-                                            <button
-                                                className="reject-button"
-                                                disabled={processingId === request.id}
-                                                onClick={() => handleReview(request.id, "reject")}
-                                            >
-                                                Confirm Rejection
-                                            </button>
-
-                                            <button
-                                                className="cancel-button"
-                                                disabled={processingId === request.id}
-                                                onClick={() => {
-                                                    setRejectingId(null);
-                                                    setRejectionReason("");
-                                                    setActionError("");
-                                                }}
-                                            >
-                                                Cancel
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button
-                                            className="reject-button"
-                                            disabled={processingId === request.id}
-                                            onClick={() => handleReview(request.id, "reject")}
-                                        >
-                                            Reject
-                                        </button>
+                                {request.status === "REJECTED" &&
+                                    request.rejectionReason && (
+                                        <p>
+                                            <strong>Rejection Reason:</strong>{" "}
+                                            {request.rejectionReason}
+                                        </p>
                                     )}
-                                </div>
+
+                                {/* Review controls only for pending requests */}
+                                {request.status === "PENDING" && (
+                                    <>
+                                        {rejectingId === request.id && (
+                                            <div className="reject-form">
+                                                <label
+                                                    htmlFor={`reject-${request.id}`}
+                                                >
+                                                    Rejection reason
+                                                </label>
+
+                                                <textarea
+                                                    id={`reject-${request.id}`}
+                                                    value={rejectionReason}
+                                                    onChange={(event) =>
+                                                        setRejectionReason(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                    placeholder="Explain why this request is rejected"
+                                                    rows={3}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="manager-actions">
+
+                                            <button
+                                                className="approve-button"
+                                                disabled={
+                                                    processingId === request.id
+                                                }
+                                                onClick={() =>
+                                                    handleReview(
+                                                        request.id,
+                                                        "approve"
+                                                    )
+                                                }
+                                            >
+                                                {processingId === request.id
+                                                    ? "Processing..."
+                                                    : "Approve"}
+                                            </button>
+
+                                            {rejectingId === request.id ? (
+                                                <>
+                                                    <button
+                                                        className="reject-button"
+                                                        disabled={
+                                                            processingId === request.id
+                                                        }
+                                                        onClick={() =>
+                                                            handleReview(
+                                                                request.id,
+                                                                "reject"
+                                                            )
+                                                        }
+                                                    >
+                                                        Confirm Rejection
+                                                    </button>
+
+                                                    <button
+                                                        className="cancel-button"
+                                                        disabled={
+                                                            processingId === request.id
+                                                        }
+                                                        onClick={() => {
+                                                            setRejectingId(null);
+                                                            setRejectionReason("");
+                                                            setActionError("");
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    className="reject-button"
+                                                    disabled={
+                                                        processingId === request.id
+                                                    }
+                                                    onClick={() =>
+                                                        handleReview(
+                                                            request.id,
+                                                            "reject"
+                                                        )
+                                                    }
+                                                >
+                                                    Reject
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
                             </article>
                         ))}
+
                     </div>
                 )}
+
             </section>
+
             <Chatbot />
+
         </main>
     );
 }

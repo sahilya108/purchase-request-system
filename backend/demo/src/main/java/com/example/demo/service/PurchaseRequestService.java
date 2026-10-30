@@ -10,7 +10,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class PurchaseRequestService {
@@ -75,7 +78,58 @@ public class PurchaseRequestService {
         return requestRepository.findByTeamIdAndStatus(teamId, "PENDING");
     }
 
+    // Filter purchase requests by status, date range and user/team.
+    public List<PurchaseRequest> filterRequests(
+            Long employeeId,
+            Long teamId,
+            String status,
+            LocalDate fromDate,
+            LocalDate toDate) {
+
+        if (employeeId == null && teamId == null) {
+            throw new IllegalArgumentException(
+                    "Employee ID or Team ID is required");
+        }
+
+        if (status != null && !status.isBlank()) {
+            status = status.trim().toUpperCase();
+
+            Set<String> allowedStatuses =
+                    Set.of("PENDING", "APPROVED", "REJECTED");
+
+            if (!allowedStatuses.contains(status)) {
+                throw new IllegalArgumentException(
+                        "Invalid status. Use PENDING, APPROVED or REJECTED");
+            }
+        } else {
+            status = null;
+        }
+
+        if (fromDate != null && toDate != null
+                && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException(
+                    "From date cannot be after To date");
+        }
+
+        LocalDateTime startDateTime = fromDate != null
+                ? fromDate.atStartOfDay()
+                : null;
+
+        LocalDateTime endDateTime = toDate != null
+                ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
+                : null;
+
+        return requestRepository.filterRequests(
+                employeeId,
+                teamId,
+                status,
+                startDateTime,
+                endDateTime
+        );
+    }
+
     public PurchaseRequest approveRequest(Long requestId, Long managerId) {
+
         PurchaseRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Purchase request not found with ID: " + requestId));
@@ -89,7 +143,7 @@ public class PurchaseRequestService {
 
         request.setStatus("APPROVED");
         request.setManagerId(managerId);
-        request.setReviewedAt(java.time.LocalDateTime.now());
+        request.setReviewedAt(LocalDateTime.now());
 
         PurchaseRequest approvedRequest = requestRepository.save(request);
 
@@ -128,7 +182,7 @@ public class PurchaseRequestService {
         request.setStatus("REJECTED");
         request.setManagerId(managerId);
         request.setRejectionReason(rejectionReason);
-        request.setReviewedAt(java.time.LocalDateTime.now());
+        request.setReviewedAt(LocalDateTime.now());
 
         return requestRepository.save(request);
     }
