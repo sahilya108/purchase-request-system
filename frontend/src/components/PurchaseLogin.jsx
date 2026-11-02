@@ -32,11 +32,12 @@ function Login() {
         throw new Error("Unknown user role.");
       }
 
+      // Save authentication token
       localStorage.setItem("token", token);
 
-      // All users go to /dashboard.
-      // App.jsx automatically displays the correct dashboard by role.
-      navigate("/dashboard");
+      // Redirect all roles to /dashboard.
+      // App.jsx handles role-based dashboard routing.
+      navigate("/dashboard", { replace: true });
 
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
@@ -49,12 +50,14 @@ function Login() {
     <main className="login-page">
       <section className="login-card">
         <h1>Purchase Request System</h1>
+
         <p className="login-subtitle">
           Sign in to manage your purchase requests
         </p>
 
         <form onSubmit={handleSubmit}>
           <label htmlFor="email">Email address</label>
+
           <input
             id="email"
             type="email"
@@ -66,6 +69,7 @@ function Login() {
           />
 
           <label htmlFor="password">Password</label>
+
           <input
             id="password"
             type="password"
@@ -96,7 +100,9 @@ function Login() {
           </span>
         </p>
 
-        <p className="login-footer">Employee & Manager Portal</p>
+        <p className="login-footer">
+          Employee & Manager Portal
+        </p>
       </section>
     </main>
   );
