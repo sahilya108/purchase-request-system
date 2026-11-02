@@ -59,7 +59,7 @@ function AdminDashboard() {
             const queryString = params.toString();
 
             const response = await fetch(
-                `http://localhost:8080/api/requests/admin/filter${queryString ? `?${queryString}` : ""
+                `https://purchase-request-backend.onrender.com/api/requests/admin/filter${queryString ? `?${queryString}` : ""
                 }`,
                 {
                     headers: {
@@ -101,7 +101,7 @@ function AdminDashboard() {
 
         try {
             const response = await fetch(
-                "http://localhost:8080/api/admin/teams",
+                "https://purchase-request-backend.onrender.com/api/admin/teams",
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -192,7 +192,7 @@ function AdminDashboard() {
 
         try {
             const response = await fetch(
-                "http://localhost:8080/api/admin/teams",
+                "https://purchase-request-backend.onrender.com/api/admin/teams",
                 {
                     method: "POST",
                     headers: {

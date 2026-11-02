@@ -49,7 +49,7 @@ function ManagerRegister() {
 
     try {
       const response = await fetch(
-        "http://localhost:8080/api/admin/managers",
+        "https://purchase-request-backend.onrender.com/api/admin/managers",
         {
           method: "POST",
           headers: {

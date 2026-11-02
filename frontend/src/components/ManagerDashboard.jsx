@@ -54,7 +54,7 @@ function ManagerDashboard() {
             const queryString = params.toString();
 
             const response = await fetch(
-                `http://localhost:8080/api/requests/filter${
+                `https://purchase-request-backend.onrender.com/api/requests/filter${
                     queryString ? `?${queryString}` : ""
                 }`,
                 {
@@ -146,7 +146,7 @@ function ManagerDashboard() {
 
         try {
             const response = await fetch(
-                `http://localhost:8080/api/requests/${requestId}/${action}`,
+                `https://purchase-request-backend.onrender.com/api/requests/${requestId}/${action}`,
                 {
                     method: "PUT",
                     headers: {
