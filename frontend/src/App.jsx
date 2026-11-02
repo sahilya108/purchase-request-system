@@ -5,6 +5,7 @@ import Register from "./components/Register.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 import ManagerDashboard from "./components/ManagerDashboard.jsx";
 import ManagerRegister from "./components/ManagerRegister.jsx";
+import AdminDashboard from "./components/AdminDashboard.jsx";
 import "./App.css";
 
 function getRole() {
@@ -30,7 +31,7 @@ function DashboardRouter() {
   const role = getRole();
 
   if (role === "ADMIN") {
-    return <Navigate to="/manager-register" replace />;
+    return <AdminDashboard />;
   }
 
   if (role === "MANAGER") {

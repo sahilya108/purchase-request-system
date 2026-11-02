@@ -101,3 +101,28 @@
     text-align: center;
   }
   
+
+
+/* Manager Registration inside Admin Dashboard */
+
+.admin-manager-section .login-page {
+  min-height: auto;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+}
+
+.admin-manager-section .login-card {
+  max-width: 560px;
+  padding: 30px;
+  background: #101018;
+  border: 1px solid #383348;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+@media (max-width: 600px) {
+  .admin-manager-section .login-card {
+    padding: 20px;
+  }
+}

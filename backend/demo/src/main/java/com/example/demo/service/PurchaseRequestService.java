@@ -78,7 +78,7 @@ public class PurchaseRequestService {
         return requestRepository.findByTeamIdAndStatus(teamId, "PENDING");
     }
 
-    // Filter purchase requests by status, date range and user/team.
+    // Existing employee and manager filtering
     public List<PurchaseRequest> filterRequests(
             Long employeeId,
             Long teamId,
@@ -122,6 +122,49 @@ public class PurchaseRequestService {
         return requestRepository.filterRequests(
                 employeeId,
                 teamId,
+                status,
+                startDateTime,
+                endDateTime
+        );
+    }
+
+    // Admin: filter requests across all teams
+    public List<PurchaseRequest> filterAllRequests(
+            Long employeeId,
+            String status,
+            LocalDate fromDate,
+            LocalDate toDate) {
+
+        if (status != null && !status.isBlank()) {
+            status = status.trim().toUpperCase();
+
+            Set<String> allowedStatuses =
+                    Set.of("PENDING", "APPROVED", "REJECTED");
+
+            if (!allowedStatuses.contains(status)) {
+                throw new IllegalArgumentException(
+                        "Invalid status. Use PENDING, APPROVED or REJECTED");
+            }
+        } else {
+            status = null;
+        }
+
+        if (fromDate != null && toDate != null
+                && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException(
+                    "From date cannot be after To date");
+        }
+
+        LocalDateTime startDateTime = fromDate != null
+                ? fromDate.atStartOfDay()
+                : null;
+
+        LocalDateTime endDateTime = toDate != null
+                ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
+                : null;
+
+        return requestRepository.filterAllRequests(
+                employeeId,
                 status,
                 startDateTime,
                 endDateTime

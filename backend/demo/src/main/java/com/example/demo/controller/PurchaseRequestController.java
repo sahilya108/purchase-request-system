@@ -87,21 +87,16 @@ public class PurchaseRequestController {
         return requestService.getEmployeeRequests(employeeId);
     }
 
-    // Filter requests for employees and managers.
     @GetMapping("/filter")
     public List<PurchaseRequest> filterRequests(
             @RequestParam(required = false) String status,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate fromDate,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate toDate,
-
             @RequestParam(required = false) Long employeeId,
-
             Authentication authentication) {
 
         User loggedInUser = userRepository.findByEmail(
@@ -110,23 +105,16 @@ public class PurchaseRequestController {
                 "Logged-in user not found"));
 
         if ("EMPLOYEE".equals(loggedInUser.getRole())) {
-
             if (employeeId != null) {
                 throw new IllegalArgumentException(
                         "Employees cannot filter by another employee ID");
             }
 
             return requestService.filterRequests(
-                    loggedInUser.getId(),
-                    null,
-                    status,
-                    fromDate,
-                    toDate
-            );
+                    loggedInUser.getId(), null, status, fromDate, toDate);
         }
 
         if ("MANAGER".equals(loggedInUser.getRole())) {
-
             if (loggedInUser.getTeamId() == null) {
                 throw new IllegalArgumentException(
                         "Manager is not assigned to any team");
@@ -135,10 +123,8 @@ public class PurchaseRequestController {
             if (employeeId != null) {
                 boolean employeeBelongsToTeam =
                         userRepository.existsByIdAndRoleAndTeamId(
-                                employeeId,
-                                "EMPLOYEE",
-                                loggedInUser.getTeamId()
-                        );
+                                employeeId, "EMPLOYEE",
+                                loggedInUser.getTeamId());
 
                 if (!employeeBelongsToTeam) {
                     throw new IllegalArgumentException(
@@ -147,16 +133,38 @@ public class PurchaseRequestController {
             }
 
             return requestService.filterRequests(
-                    employeeId,
-                    loggedInUser.getTeamId(),
-                    status,
-                    fromDate,
-                    toDate
-            );
+                    employeeId, loggedInUser.getTeamId(),
+                    status, fromDate, toDate);
         }
 
         throw new IllegalArgumentException(
                 "You are not allowed to filter purchase requests");
+    }
+
+    // ADMIN: Fetch and filter requests across all teams
+    @GetMapping("/admin/filter")
+    public List<PurchaseRequest> filterAllRequests(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate toDate,
+            @RequestParam(required = false) Long employeeId,
+            Authentication authentication) {
+
+        User admin = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Logged-in user not found"));
+
+        if (!"ADMIN".equals(admin.getRole())) {
+            throw new SecurityException(
+                    "Only administrators can view all purchase requests");
+        }
+
+        return requestService.filterAllRequests(
+                employeeId, status, fromDate, toDate);
     }
 
     @PutMapping("/{requestId}/approve")
@@ -164,10 +172,8 @@ public class PurchaseRequestController {
             @PathVariable Long requestId,
             Authentication authentication) {
 
-        User manager = userRepository
-                .findByEmail(authentication.getName())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("User not found"));
+        User manager = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (!"MANAGER".equals(manager.getRole())) {
             throw new SecurityException(
@@ -175,10 +181,7 @@ public class PurchaseRequestController {
         }
 
         PurchaseRequest approvedRequest =
-                requestService.approveRequest(
-                        requestId,
-                        manager.getId()
-                );
+                requestService.approveRequest(requestId, manager.getId());
 
         return ResponseEntity.ok(approvedRequest);
     }
@@ -189,22 +192,16 @@ public class PurchaseRequestController {
             @RequestBody RejectRequest request,
             Authentication authentication) {
 
-        User manager = userRepository
-                .findByEmail(authentication.getName())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("User not found"));
+        User manager = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (!"MANAGER".equals(manager.getRole())) {
             throw new SecurityException(
                     "Only managers can reject requests");
         }
 
-        PurchaseRequest rejectedRequest =
-                requestService.rejectRequest(
-                        requestId,
-                        manager.getId(),
-                        request.rejectionReason()
-                );
+        PurchaseRequest rejectedRequest = requestService.rejectRequest(
+                requestId, manager.getId(), request.rejectionReason());
 
         return ResponseEntity.ok(rejectedRequest);
     }
@@ -214,7 +211,6 @@ public class PurchaseRequestController {
     @GetMapping("/team/{teamId}/pending")
     public List<PurchaseRequest> getPendingRequestsByTeam(
             @PathVariable Long teamId) {
-
         return requestService.getPendingRequestsByTeam(teamId);
     }
 

@@ -1,529 +1,150 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Chatbot from "./Chatbot.jsx";
+import "./Login.css";
 
-function ManagerDashboard() {
-    const [refreshing, setRefreshing] = useState(false);
-    const [requests, setRequests] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [actionError, setActionError] = useState("");
-    const [processingId, setProcessingId] = useState(null);
-    const [rejectingId, setRejectingId] = useState(null);
-    const [rejectionReason, setRejectionReason] = useState("");
+function ManagerRegister() {
+  const navigate = useNavigate();
 
-    // Filter states
-    const [status, setStatus] = useState("");
-    const [fromDate, setFromDate] = useState("");
-    const [toDate, setToDate] = useState("");
-    const [employeeId, setEmployeeId] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    const navigate = useNavigate();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+
     const token = localStorage.getItem("token");
 
-    async function loadRequests(filters = {}) {
-        if (!token) {
-            navigate("/");
-            return;
-        }
-
-        setRefreshing(true);
-        setError("");
-
-        try {
-            const params = new URLSearchParams();
-
-            if (filters.status) {
-                params.append("status", filters.status);
-            }
-
-            if (filters.fromDate) {
-                params.append("fromDate", filters.fromDate);
-            }
-
-            if (filters.toDate) {
-                params.append("toDate", filters.toDate);
-            }
-
-            if (filters.employeeId) {
-                params.append("employeeId", filters.employeeId);
-            }
-
-            const queryString = params.toString();
-
-            const response = await fetch(
-                `http://localhost:8080/api/requests/filter${
-                    queryString ? `?${queryString}` : ""
-                }`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    cache: "no-store",
-                }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                    data.error ||
-                    "Could not load purchase requests"
-                );
-            }
-
-            setRequests(Array.isArray(data) ? data : []);
-
-        } catch (err) {
-            setError(err.message || "Failed to connect to the server");
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
+    if (!token) {
+      setError("Please log in with an administrator account first.");
+      return;
     }
 
-    useEffect(() => {
-        loadRequests();
-    }, []);
+    try {
+      const payload = JSON.parse(
+        atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+      );
 
-    function handleApplyFilters(event) {
-        event.preventDefault();
-
-        if (fromDate && toDate && fromDate > toDate) {
-            setError("From date cannot be after To date.");
-            return;
-        }
-
-        if (
-            employeeId.trim() &&
-            (!/^\d+$/.test(employeeId.trim()) ||
-                Number(employeeId) <= 0)
-        ) {
-            setError("Please enter a valid Employee ID.");
-            return;
-        }
-
-        loadRequests({
-            status,
-            fromDate,
-            toDate,
-            employeeId: employeeId.trim(),
-        });
+      if (payload.role !== "ADMIN") {
+        setError("Only an administrator can create manager accounts.");
+        return;
+      }
+    } catch {
+      setError("Invalid login session. Please log in again.");
+      return;
     }
 
-    function handleResetFilters() {
-        setStatus("");
-        setFromDate("");
-        setToDate("");
-        setEmployeeId("");
-
-        loadRequests();
+    if (password.length < 8) {
+      setError("Password must contain at least 8 characters.");
+      return;
     }
 
-    async function handleReview(requestId, action) {
-        setActionError("");
+    setLoading(true);
 
-        if (action === "reject") {
-            if (rejectingId !== requestId) {
-                setRejectingId(requestId);
-                setRejectionReason("");
-                return;
-            }
-
-            if (!rejectionReason.trim()) {
-                setActionError("Please enter a reason for rejection.");
-                return;
-            }
+    try {
+      const response = await fetch(
+        "http://localhost:8080/api/admin/managers",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            teamId: Number(teamId),
+          }),
         }
+      );
 
-        setProcessingId(requestId);
+      const result = await response.text();
 
-        try {
-            const response = await fetch(
-                `http://localhost:8080/api/requests/${requestId}/${action}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    ...(action === "reject"
-                        ? {
-                            body: JSON.stringify({
-                                rejectionReason: rejectionReason.trim(),
-                            }),
-                        }
-                        : {}),
-                }
-            );
+      if (!response.ok) {
+        throw new Error(result || "Manager registration failed.");
+      }
 
-            const text = await response.text();
-            let data = {};
-
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch {
-                data = { message: text };
-            }
-
-            if (!response.ok) {
-                throw new Error(
-                    data.error ||
-                    data.message ||
-                    `Could not ${action} request`
-                );
-            }
-
-            setRejectingId(null);
-            setRejectionReason("");
-
-            // Reload using the currently applied filters.
-            await loadRequests({
-                status,
-                fromDate,
-                toDate,
-                employeeId: employeeId.trim(),
-            });
-
-        } catch (err) {
-            setActionError(err.message || "Request review failed");
-        } finally {
-            setProcessingId(null);
-        }
+      setMessage("Manager account created successfully.");
+      setName("");
+      setEmail("");
+      setPassword("");
+      setTeamId("");
+    } catch (err) {
+      setError(err.message || "Unable to create manager account.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    function handleLogout() {
-        localStorage.removeItem("token");
-        navigate("/");
-    }
+  return (
+    <main className="login-page">
+      <section className="login-card">
+        <h1>Manager Registration</h1>
+        <p className="login-subtitle">
+          Create a manager account for a team
+        </p>
 
-    return (
-        <main className="dashboard-page">
-            <header className="dashboard-header">
-                <div className="dashboard-brand">
-                    <h1>Purchase Request System</h1>
-                    <p>Manager Dashboard</p>
-                </div>
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="manager-name">Full name</label>
+          <input
+            id="manager-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter manager name"
+            required
+          />
 
-                <button
-                    className="logout-button"
-                    onClick={handleLogout}
-                >
-                    Logout
-                </button>
-            </header>
+          <label htmlFor="manager-email">Email address</label>
+          <input
+            id="manager-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter manager email"
+            required
+          />
 
-            <section className="dashboard-content">
-                <div className="dashboard-actions">
-                    <h2>Team Purchase Requests</h2>
+          <label htmlFor="manager-password">Password</label>
+          <input
+            id="manager-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Minimum 8 characters"
+            minLength={8}
+            autoComplete="new-password"
+            required
+          />
 
-                    <button
-                        className="create-request-button refresh-button"
-                        onClick={() =>
-                            loadRequests({
-                                status,
-                                fromDate,
-                                toDate,
-                                employeeId: employeeId.trim(),
-                            })
-                        }
-                        disabled={refreshing}
-                    >
-                        <span className={
-                            refreshing
-                                ? "refresh-icon spinning"
-                                : "refresh-icon"
-                        }>
-                            ↻
-                        </span>
+          <label htmlFor="manager-team">Team ID</label>
+          <input
+            id="manager-team"
+            type="number"
+            min="1"
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            placeholder="Enter existing team ID"
+            required
+          />
 
-                        {refreshing ? "Refreshing..." : "Refresh"}
-                    </button>
-                </div>
+          {error && <p className="login-error">{error}</p>}
+          {message && <p>{message}</p>}
 
-                {/* Manager Filters */}
-                <form
-                    className="request-filters"
-                    onSubmit={handleApplyFilters}
-                >
-                    <div className="filter-group">
-                        <label htmlFor="manager-status">
-                            Status
-                        </label>
-
-                        <select
-                            id="manager-status"
-                            value={status}
-                            onChange={(event) =>
-                                setStatus(event.target.value)
-                            }
-                        >
-                            <option value="">All Status</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="REJECTED">Rejected</option>
-                        </select>
-                    </div>
-
-                    <div className="filter-group">
-                        <label htmlFor="manager-from-date">
-                            From Date
-                        </label>
-
-                        <input
-                            id="manager-from-date"
-                            type="date"
-                            value={fromDate}
-                            max={toDate || undefined}
-                            onChange={(event) =>
-                                setFromDate(event.target.value)
-                            }
-                        />
-                    </div>
-
-                    <div className="filter-group">
-                        <label htmlFor="manager-to-date">
-                            To Date
-                        </label>
-
-                        <input
-                            id="manager-to-date"
-                            type="date"
-                            value={toDate}
-                            min={fromDate || undefined}
-                            onChange={(event) =>
-                                setToDate(event.target.value)
-                            }
-                        />
-                    </div>
-
-                    <div className="filter-group">
-                        <label htmlFor="employee-id">
-                            Employee ID
-                        </label>
-
-                        <input
-                            id="employee-id"
-                            type="number"
-                            min="1"
-                            placeholder="Enter Employee ID"
-                            value={employeeId}
-                            onChange={(event) =>
-                                setEmployeeId(event.target.value)
-                            }
-                        />
-                    </div>
-
-                    <div className="filter-buttons">
-                        <button
-                            type="submit"
-                            className="apply-filter-button"
-                            disabled={refreshing}
-                        >
-                            Apply Filters
-                        </button>
-
-                        <button
-                            type="button"
-                            className="reset-filter-button"
-                            onClick={handleResetFilters}
-                            disabled={refreshing}
-                        >
-                            Reset
-                        </button>
-                    </div>
-                </form>
-
-                {loading && (
-                    <p className="dashboard-message">
-                        Loading requests...
-                    </p>
-                )}
-
-                {error && (
-                    <p className="dashboard-error">{error}</p>
-                )}
-
-                {actionError && (
-                    <p className="dashboard-error">{actionError}</p>
-                )}
-
-                {!loading && !error && requests.length === 0 && (
-                    <div className="empty-state">
-                        <h3>No purchase requests found</h3>
-                        <p>
-                            Try changing your filters or employee ID.
-                        </p>
-                    </div>
-                )}
-
-                {!loading && !error && requests.length > 0 && (
-                    <div className="request-grid">
-                        {requests.map((request) => (
-                            <article
-                                className="request-card"
-                                key={request.id}
-                            >
-                                <div className="request-card-heading">
-                                    <h3>{request.itemName}</h3>
-
-                                    <span
-                                        className={`request-status ${
-                                            request.status?.toLowerCase()
-                                        }`}
-                                    >
-                                        {request.status}
-                                    </span>
-                                </div>
-
-                                <p className="request-description">
-                                    {request.description}
-                                </p>
-
-                                <p>
-                                    <strong>Employee ID:</strong>{" "}
-                                    {request.employeeId}
-                                </p>
-
-                                <p>
-                                    <strong>Quantity:</strong>{" "}
-                                    {request.quantity}
-                                </p>
-
-                                <p>
-                                    <strong>Amount:</strong>{" "}
-                                    ₹{Number(request.amount).toLocaleString("en-IN")}
-                                </p>
-
-                                <p>
-                                    <strong>Reason:</strong>{" "}
-                                    {request.reason}
-                                </p>
-
-                                <p className="request-id">
-                                    <strong>Request ID:</strong>{" "}
-                                    #{request.id}
-                                </p>
-
-                                {request.createdAt && (
-                                    <p>
-                                        <strong>Created At:</strong>{" "}
-                                        {new Date(request.createdAt).toLocaleString("en-IN")}
-                                    </p>
-                                )}
-
-                                {request.status === "REJECTED" &&
-                                    request.rejectionReason && (
-                                        <p>
-                                            <strong>Rejection Reason:</strong>{" "}
-                                            {request.rejectionReason}
-                                        </p>
-                                    )}
-
-                                {/* Only pending requests can be reviewed */}
-                                {request.status === "PENDING" && (
-                                    <>
-                                        {rejectingId === request.id && (
-                                            <div className="reject-form">
-                                                <label
-                                                    htmlFor={`reject-${request.id}`}
-                                                >
-                                                    Rejection reason
-                                                </label>
-
-                                                <textarea
-                                                    id={`reject-${request.id}`}
-                                                    value={rejectionReason}
-                                                    onChange={(event) =>
-                                                        setRejectionReason(
-                                                            event.target.value
-                                                        )
-                                                    }
-                                                    placeholder="Explain why this request is rejected"
-                                                    rows={3}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="manager-actions">
-                                            <button
-                                                className="approve-button"
-                                                disabled={
-                                                    processingId === request.id
-                                                }
-                                                onClick={() =>
-                                                    handleReview(
-                                                        request.id,
-                                                        "approve"
-                                                    )
-                                                }
-                                            >
-                                                {processingId === request.id
-                                                    ? "Processing..."
-                                                    : "Approve"}
-                                            </button>
-
-                                            {rejectingId === request.id ? (
-                                                <>
-                                                    <button
-                                                        className="reject-button"
-                                                        disabled={
-                                                            processingId === request.id
-                                                        }
-                                                        onClick={() =>
-                                                            handleReview(
-                                                                request.id,
-                                                                "reject"
-                                                            )
-                                                        }
-                                                    >
-                                                        Confirm Rejection
-                                                    </button>
-
-                                                    <button
-                                                        className="cancel-button"
-                                                        disabled={
-                                                            processingId === request.id
-                                                        }
-                                                        onClick={() => {
-                                                            setRejectingId(null);
-                                                            setRejectionReason("");
-                                                            setActionError("");
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <button
-                                                    className="reject-button"
-                                                    disabled={
-                                                        processingId === request.id
-                                                    }
-                                                    onClick={() =>
-                                                        handleReview(
-                                                            request.id,
-                                                            "reject"
-                                                        )
-                                                    }
-                                                >
-                                                    Reject
-                                                </button>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-                            </article>
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            <Chatbot />
-        </main>
-    );
+          <button type="submit" disabled={loading}>
+            {loading ? "Creating account..." : "Create Manager"}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
 }
 
-export default ManagerDashboard;
+export default ManagerRegister;

@@ -19,6 +19,7 @@ public interface PurchaseRequestRepository
     List<PurchaseRequest> findByTeamIdAndStatus(
             Long teamId, String status);
 
+    // Existing employee and manager filtering
     @Query("""
             SELECT p FROM PurchaseRequest p
             WHERE (:employeeId IS NULL OR p.employeeId = :employeeId)
@@ -31,6 +32,22 @@ public interface PurchaseRequestRepository
     List<PurchaseRequest> filterRequests(
             @Param("employeeId") Long employeeId,
             @Param("teamId") Long teamId,
+            @Param("status") String status,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate
+    );
+
+    // Admin: filter all purchase requests
+    @Query("""
+            SELECT p FROM PurchaseRequest p
+            WHERE (:employeeId IS NULL OR p.employeeId = :employeeId)
+            AND (:status IS NULL OR UPPER(p.status) = UPPER(:status))
+            AND (:fromDate IS NULL OR p.createdAt >= :fromDate)
+            AND (:toDate IS NULL OR p.createdAt <= :toDate)
+            ORDER BY p.createdAt DESC
+            """)
+    List<PurchaseRequest> filterAllRequests(
+            @Param("employeeId") Long employeeId,
             @Param("status") String status,
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate

@@ -603,3 +603,231 @@ border: 1px solid #30303d;
       flex: 1;
   }
 }
+
+
+
+/* =========================================
+   ADMIN DASHBOARD STYLES
+========================================= */
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid #30303d;
+  padding-bottom: 16px;
+}
+
+.admin-nav-button {
+  padding: 12px 20px;
+  border: 1px solid #30303d;
+  border-radius: 9px;
+  background: #171720;
+  color: #f5f5f7;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-nav-button:hover {
+  background: #292438;
+  border-color: #a78bfa;
+}
+
+.admin-nav-button.active {
+  background: #6d28d9;
+  border-color: #6d28d9;
+  color: #ffffff;
+}
+
+/* Manager registration section */
+
+.admin-manager-section {
+  width: 100%;
+  padding: 28px;
+  background: #171720;
+  border: 1px solid #30303d;
+  border-radius: 14px;
+}
+
+/* Teams section */
+
+.admin-team-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.admin-team-row {
+  padding: 22px;
+  background: #171720;
+  border: 1px solid #30303d;
+  border-radius: 12px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.admin-team-row:hover {
+  border-color: #a78bfa;
+  transform: translateY(-2px);
+}
+
+.admin-team-row h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.admin-team-row p {
+  margin: 0;
+  color: #a5a5b5;
+  font-size: 14px;
+}
+
+/* Create team section */
+
+.admin-create-team {
+  max-width: 700px;
+  margin: 20px auto;
+  padding: 30px;
+  background: #171720;
+  border: 1px solid #30303d;
+  border-radius: 14px;
+}
+
+.admin-create-team h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.admin-create-team p {
+  color: #a5a5b5;
+  line-height: 1.6;
+}
+
+.admin-team-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.admin-team-form label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-team-form input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #3a3a49;
+  border-radius: 8px;
+  background: #101018;
+  color: #f5f5f7;
+  font-size: 14px;
+}
+
+.admin-team-form input:focus {
+  outline: none;
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 2px rgb(167 139 250 / 15%);
+}
+
+.admin-team-form button {
+  align-self: flex-start;
+  padding: 13px 22px;
+  border: none;
+  border-radius: 8px;
+  background: #6d28d9;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-team-form button:hover {
+  background: #5b21b6;
+}
+
+.admin-team-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Admin dashboard responsive layout */
+
+@media (max-width: 800px) {
+  .admin-team-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-nav {
+    flex-direction: column;
+  }
+
+  .admin-nav-button {
+    width: 100%;
+  }
+
+  .admin-team-list {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-manager-section,
+  .admin-create-team {
+    padding: 20px;
+  }
+
+  .admin-team-form button {
+    width: 100%;
+  }
+}
+
+
+/* Admin reviewed request details */
+
+.request-card .admin-review-detail {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #242033;
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.request-card .admin-review-detail.manager-id {
+  color: #93c5fd;
+}
+
+.request-card .admin-review-detail.reviewed-at {
+  color: #c4b5fd;
+}
+
+.request-card .admin-review-detail.rejection-reason {
+  color: #fca5a5;
+}
+
+.request-card .admin-review-detail {
+  display: table;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.request-card .manager-id {
+  background: #172b45;
+  color: #93c5fd;
+}
+
+.request-card .reviewed-at {
+  background: #29213f;
+  color: #c4b5fd;
+}
+
+.request-card .rejection-reason {
+  background: #452027;
+  color: #fca5a5;
+}
