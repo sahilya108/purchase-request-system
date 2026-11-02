@@ -65,7 +65,9 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
-                        "http://localhost:5174"
+                        "http://localhost:5174",
+                        "https://purchase-request-system.vercel.app",
+                        "https://purchase-request-system-36c77hzii-purchase-request-system.vercel.app"
                 )
         );
 
@@ -74,7 +76,7 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedHeaders(
-                List.of("Authorization", "Content-Type")
+                List.of("*")
         );
 
         UrlBasedCorsConfigurationSource source =
