@@ -34,11 +34,10 @@ function Login() {
 
       localStorage.setItem("token", token);
 
-      if (payload.role === "ADMIN") {
-        navigate("/manager-register");
-      } else {
-        navigate("/dashboard");
-      }
+      // All users go to /dashboard.
+      // App.jsx automatically displays the correct dashboard by role.
+      navigate("/dashboard");
+
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
