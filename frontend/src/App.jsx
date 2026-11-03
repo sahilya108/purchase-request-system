@@ -52,7 +52,8 @@ function AdminRoute() {
     return <Navigate to="/" replace />;
   }
 
-  return <ManagerRegister />;
+  // ADMIN should always open the Admin Dashboard.
+  return <Navigate to="/dashboard" replace />;
 }
 
 function App() {
